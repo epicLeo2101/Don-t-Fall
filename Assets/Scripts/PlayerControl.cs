@@ -11,37 +11,55 @@ public class PlayerControl : MonoBehaviour
     private float moveInput;
 
     private Rigidbody rb;
-    //private Game_Manager manager; <<<<<<<<<<--------- This is the thing to witch to a new level
-
     private bool canMove = true;
-
     private bool facingRight = true;
-
     private bool isGrounded = true;
     private bool canJump = true;
+
     public Transform groundCheck;
     public float checkRadius;
     public LayerMask whatIsGround;
 
+    public Transform cameraTransform; // Assign the main camera in the inspector
+
     void Start()
     {
         rb = GetComponent<Rigidbody>();
+
+        // Auto-assign the Main Camera (In other words you don't have to drag and drop the camera in the slot.)
+        if (cameraTransform == null)
+        {
+            cameraTransform = Camera.main.transform;
+        }
     }
 
     // Update is called once per frame
     void Update()
     {
-        // Check if player is grounded
+       PlayerMovement();
+    }
+
+    public void PlayerMovement()
+    {
+         // Check if player is grounded
         isGrounded = Physics.OverlapSphere(groundCheck.position, checkRadius, whatIsGround).Length > 0;
 
-        //Left and Right movement
+        // Left and Right movement based on Camera Direction
+        Vector3 camRight = cameraTransform.right;
+        camRight.y = 0; // Ignore vertical tilt
+        camRight.Normalize();
+
         moveInput = Input.GetAxis("Horizontal");
-        rb.velocity = new Vector3(moveInput * moveSpeed, rb.velocity.y);
+        Debug.Log(moveInput);
+        Vector3 moveDirection = camRight * moveInput * moveSpeed;
+
+        rb.velocity = new Vector3(moveDirection.x, rb.velocity.y, moveDirection.z);
 
         //Jumping check
         if (Input.GetKeyDown(KeyCode.Space) && isGrounded == true && canJump == true)
         {
-            rb.velocity = Vector3.up * jumpForce;
+            rb.velocity = transform.up * jumpForce;
+            Debug.Log(KeyCode.Space);
             /*canJump = false;*/ // Disable jumping
         }
 
