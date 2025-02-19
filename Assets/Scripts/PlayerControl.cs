@@ -11,8 +11,8 @@ public class PlayerControl : MonoBehaviour
     private float moveInput;
 
     private Rigidbody rb;
-    private bool canMove = true;
-    private bool facingRight = true;
+    //private bool canMove = true; <<<<<<<-------- is not being use but maybe it would.
+    //private bool facingRight = true; <<<-----------^
     private bool isGrounded = true;
     private bool canJump = true;
 
