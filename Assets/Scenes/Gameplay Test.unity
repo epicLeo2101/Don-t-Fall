@@ -258,9 +258,9 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 413157838}
   serializedVersion: 4
-  m_Mass: 3
-  m_Drag: 1
-  m_AngularDrag: 0
+  m_Mass: 65
+  m_Drag: 0
+  m_AngularDrag: 0.5
   m_CenterOfMass: {x: 0, y: -1, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
@@ -393,15 +393,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7e8c11eb5cc8a6b4999e5c27dbc3d2b6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 7.5
-  jumpForce: 5
+  moveSpeed: 6.5
+  acceleration: 20
+  deceleration: 20
+  jumpForce: 4
   groundCheck: {fileID: 823368819}
   checkRadius: 0.1
   whatIsGround:
     serializedVersion: 2
     m_Bits: 256
-  cameraTransform: {fileID: 0}
-  gravityController: {fileID: 0}
+  cameraTransform: {fileID: 963194228}
+  gravityController: {fileID: 413157844}
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
@@ -633,7 +635,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   player: {fileID: 413157843}
-  smoothSpeed: 5
+  smoothSpeed: 8.5
 --- !u!1 &1133049337
 GameObject:
   m_ObjectHideFlags: 0

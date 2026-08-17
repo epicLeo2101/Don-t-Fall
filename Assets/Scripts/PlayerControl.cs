@@ -4,6 +4,10 @@ public class PlayerControl : MonoBehaviour
 {
     [Header("Movement")]
     public float moveSpeed = 5f;
+    public float acceleration = 25f;
+    public float deceleration = 20f;
+
+    [Header("Jump")]
     public float jumpForce = 8f;
 
     [Header("Ground Check")]
@@ -14,7 +18,7 @@ public class PlayerControl : MonoBehaviour
     [Header("Camera")]
     public Transform cameraTransform;
 
-    [Header("References")]
+    [Header("Gravity")]
     public GravityController gravityController;
 
     private Rigidbody rb;
@@ -39,13 +43,15 @@ public class PlayerControl : MonoBehaviour
 
         if (gravityController == null)
         {
-            Debug.LogError("PlayerControl could not find a GravityController.");
+            Debug.LogError(
+                "PlayerControl could not find a GravityController."
+            );
         }
     }
 
     void Update()
     {
-        HandleInput();
+        GetInput();
         CheckGrounded();
     }
 
@@ -54,11 +60,13 @@ public class PlayerControl : MonoBehaviour
         PlayerMovement();
     }
 
-    void HandleInput()
+    void GetInput()
     {
         moveInput = Input.GetAxisRaw("Horizontal");
 
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded && canJump)
+        if (Input.GetKeyDown(KeyCode.Space) &&
+            isGrounded &&
+            canJump)
         {
             Jump();
         }
@@ -78,48 +86,77 @@ public class PlayerControl : MonoBehaviour
         if (gravityController == null)
             return;
 
-        // Current direction of gravity.
-        Vector3 gravityDirection =
-            gravityController.GetGravityDirection();
-
-        // Direction opposite gravity.
         Vector3 upDirection =
             gravityController.GetUpDirection();
 
-        // Get camera's right direction.
+        // -------------------------------------------------
+        // CAMERA MOVEMENT
+        // -------------------------------------------------
+
         Vector3 camRight = cameraTransform.right;
 
-        // Project camera right onto the player's current ground plane.
+        // Project camera-right onto the player's current
+        // walking surface.
         camRight = Vector3.ProjectOnPlane(
             camRight,
             upDirection
         ).normalized;
 
-        // Horizontal movement along the current surface.
-        Vector3 movementVelocity =
+        Vector3 targetMovement =
             camRight * moveInput * moveSpeed;
 
-        // Preserve the velocity caused by gravity.
+        // -------------------------------------------------
+        // CURRENT VELOCITY
+        // -------------------------------------------------
+
+        Vector3 currentVelocity = rb.velocity;
+
+        // Separate velocity into:
+        //
+        // 1. Gravity velocity
+        // 2. Surface/momentum velocity
+        //
+        // Anything perpendicular to gravity is preserved.
         Vector3 gravityVelocity =
-            Vector3.Project(rb.velocity, gravityDirection);
+            Vector3.Project(
+                currentVelocity,
+                -upDirection
+            );
 
-        // Combine movement + gravity.
-        rb.velocity = movementVelocity + gravityVelocity;
+        Vector3 surfaceVelocity =
+            Vector3.ProjectOnPlane(
+                currentVelocity,
+                upDirection
+            );
 
-        // Extra falling acceleration.
-        if (!isGrounded)
+        // -------------------------------------------------
+        // MOVEMENT + MOMENTUM
+        // -------------------------------------------------
+
+        float accelerationRate;
+
+        if (moveInput != 0)
         {
-            float gravitySpeed =
-                Vector3.Dot(rb.velocity, gravityDirection);
-
-            if (gravitySpeed > 0)
-            {
-                rb.AddForce(
-                    gravityDirection * Physics.gravity.magnitude,
-                    ForceMode.Acceleration
-                );
-            }
+            accelerationRate = acceleration;
         }
+        else
+        {
+            accelerationRate = deceleration;
+        }
+
+        surfaceVelocity = Vector3.MoveTowards(
+            surfaceVelocity,
+            targetMovement,
+            accelerationRate * Time.fixedDeltaTime
+        );
+
+        // -------------------------------------------------
+        // COMBINE VELOCITIES
+        // -------------------------------------------------
+
+        rb.velocity =
+            gravityVelocity +
+            surfaceVelocity;
     }
 
     void Jump()
@@ -130,8 +167,8 @@ public class PlayerControl : MonoBehaviour
         Vector3 upDirection =
             gravityController.GetUpDirection();
 
-        // Remove current velocity along the gravity axis.
-        Vector3 velocityWithoutGravity =
+        // Preserve momentum that is parallel to the ground.
+        Vector3 surfaceVelocity =
             Vector3.ProjectOnPlane(
                 rb.velocity,
                 upDirection
@@ -139,7 +176,7 @@ public class PlayerControl : MonoBehaviour
 
         // Jump opposite the direction of gravity.
         rb.velocity =
-            velocityWithoutGravity +
+            surfaceVelocity +
             upDirection * jumpForce;
     }
 }

@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class GravityController : MonoBehaviour
@@ -12,33 +11,119 @@ public class GravityController : MonoBehaviour
         NegativeY
     }
 
-    public GravityDirection gravityDirection = GravityDirection.NegativeY; // Default gravity
-    public float gravityValue = 9.81f; // Standard gravity force
-    public float rotationSpeed = 5f; // Rotation smoothing speed
+    [Header("Gravity")]
+    public GravityDirection gravityDirection = GravityDirection.NegativeY;
+    public float gravityValue = 9.81f;
+
+    [Header("Rotation")]
+    public float rotationSpeed = 5f;
 
     private Rigidbody rb;
-    private Transform playerTransform;
+    private Coroutine rotationCoroutine;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        playerTransform = transform;
 
         if (rb == null)
         {
-            Debug.LogError("Rigidbody component is missing from this GameObject.");
+            Debug.LogError("GravityController requires a Rigidbody.");
+            enabled = false;
             return;
         }
 
-        // Lock rotation in X, Y, and Z at the start
-        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationZ;
+        // We use Unity's Physics.gravity.
+        rb.useGravity = true;
+
+        // Prevent physics from spinning the player.
+        rb.constraints = RigidbodyConstraints.FreezeRotation;
 
         UpdateGravity();
+        ApplyRotation();
     }
 
     void Update()
     {
         HandleGravityInput();
+    }
+
+    void HandleGravityInput()
+    {
+        if (Input.GetKeyDown(KeyCode.UpArrow))
+        {
+            ToggleVerticalGravity();
+        }
+        else if (Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            ToggleHorizontalGravity(false);
+        }
+        else if (Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            ToggleHorizontalGravity(true);
+        }
+    }
+
+    void ToggleVerticalGravity()
+    {
+        switch (gravityDirection)
+        {
+            case GravityDirection.NegativeY:
+                gravityDirection = GravityDirection.PositiveY;
+                break;
+
+            case GravityDirection.PositiveY:
+                gravityDirection = GravityDirection.NegativeY;
+                break;
+
+            case GravityDirection.PositiveX:
+                gravityDirection = GravityDirection.NegativeX;
+                break;
+
+            case GravityDirection.NegativeX:
+                gravityDirection = GravityDirection.PositiveX;
+                break;
+        }
+
+        UpdateGravity();
+        ApplyRotation();
+    }
+
+    void ToggleHorizontalGravity(bool isLeft)
+    {
+        switch (gravityDirection)
+        {
+            case GravityDirection.NegativeY:
+                gravityDirection = isLeft
+                    ? GravityDirection.PositiveX
+                    : GravityDirection.NegativeX;
+                break;
+
+            case GravityDirection.PositiveY:
+                gravityDirection = isLeft
+                    ? GravityDirection.NegativeX
+                    : GravityDirection.PositiveX;
+                break;
+
+            case GravityDirection.PositiveX:
+                gravityDirection = isLeft
+                    ? GravityDirection.PositiveY
+                    : GravityDirection.NegativeY;
+                break;
+
+            case GravityDirection.NegativeX:
+                gravityDirection = isLeft
+                    ? GravityDirection.NegativeY
+                    : GravityDirection.PositiveY;
+                break;
+        }
+
+        UpdateGravity();
+        ApplyRotation();
+    }
+
+    void UpdateGravity()
+    {
+        Physics.gravity = GetGravityDirection() * gravityValue;
     }
 
     public Vector3 GetGravityDirection()
@@ -66,134 +151,60 @@ public class GravityController : MonoBehaviour
         return -GetGravityDirection();
     }
 
-    void HandleGravityInput()
-    {
-       if (Input.GetKeyDown(KeyCode.UpArrow))
-    {
-        ToggleVerticalGravity();
-    }
-    else if (Input.GetKeyDown(KeyCode.LeftArrow))
-    {
-        ToggleHorizontalGravity(false); // Rotates left.
-    }
-    else if (Input.GetKeyDown(KeyCode.RightArrow))
-    {
-        ToggleHorizontalGravity(true); // Rotates right.
-    }
-    }
-
-    void ToggleVerticalGravity()
-    {
-        if (gravityDirection == GravityDirection.NegativeY)
-        {
-            gravityDirection = GravityDirection.PositiveY;
-        }
-        else if (gravityDirection == GravityDirection.PositiveY)
-        {
-            gravityDirection = GravityDirection.NegativeY;
-        }
-        else if (gravityDirection == GravityDirection.PositiveX)
-        {
-            gravityDirection = GravityDirection.NegativeX;
-        }
-        else if (gravityDirection == GravityDirection.NegativeX)
-        {
-            gravityDirection = GravityDirection.PositiveX;
-        }
-
-        ApplyRotation();
-        UpdateGravity();
-    }
-
-    void ToggleHorizontalGravity(bool isLeft)
-    {
-        if (gravityDirection == GravityDirection.NegativeY)
-        {
-            gravityDirection = isLeft ? GravityDirection.PositiveX : GravityDirection.NegativeX;
-        }
-        else if (gravityDirection == GravityDirection.PositiveY)
-        {
-            gravityDirection = isLeft ? GravityDirection.NegativeX : GravityDirection.PositiveX;
-        }
-        else if (gravityDirection == GravityDirection.PositiveX)
-        {
-            gravityDirection = isLeft ? GravityDirection.PositiveY : GravityDirection.NegativeY;
-        }
-        else if (gravityDirection == GravityDirection.NegativeX)
-        {
-            gravityDirection = isLeft ? GravityDirection.NegativeY : GravityDirection.PositiveY;
-        }
-
-        ApplyRotation();
-        UpdateGravity();
-    }
-
     void ApplyRotation()
     {
-        Quaternion targetRotation = Quaternion.identity;
+        Quaternion targetRotation;
 
         switch (gravityDirection)
         {
             case GravityDirection.PositiveX:
-                targetRotation = Quaternion.Euler(0, 0, 90); // Corrected for feet-down orientation
+                targetRotation = Quaternion.Euler(0f, 0f, 90f);
                 break;
+
             case GravityDirection.NegativeX:
-                targetRotation = Quaternion.Euler(0, 0, -90); // Corrected for feet-down orientation
+                targetRotation = Quaternion.Euler(0f, 0f, -90f);
                 break;
+
             case GravityDirection.PositiveY:
-                targetRotation = Quaternion.Euler(180, 0, 0);
+                targetRotation = Quaternion.Euler(180f, 0f, 0f);
                 break;
+
             case GravityDirection.NegativeY:
-                targetRotation = Quaternion.Euler(0, 0, 0);
+            default:
+                targetRotation = Quaternion.identity;
                 break;
         }
 
-        StartCoroutine(SmoothRotation(targetRotation));
+        if (rotationCoroutine != null)
+        {
+            StopCoroutine(rotationCoroutine);
+        }
+
+        rotationCoroutine = StartCoroutine(
+            SmoothRotation(targetRotation)
+        );
     }
 
     IEnumerator SmoothRotation(Quaternion targetRotation)
     {
-        rb.constraints = RigidbodyConstraints.None; // Unlock rotation during transition
-
-        float elapsedTime = 0;
-        Quaternion startRotation = playerTransform.rotation;
+        Quaternion startRotation = transform.rotation;
+        float elapsedTime = 0f;
 
         while (elapsedTime < 1f)
         {
-            playerTransform.rotation = Quaternion.Slerp(startRotation, targetRotation, elapsedTime);
             elapsedTime += Time.deltaTime * rotationSpeed;
+
+            transform.rotation = Quaternion.Slerp(
+                startRotation,
+                targetRotation,
+                elapsedTime
+            );
+
             yield return null;
         }
 
-        playerTransform.rotation = targetRotation; // Ensure final rotation alignment
+        transform.rotation = targetRotation;
 
-        // Reapply constraints after rotation
-        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationZ;
-    }
-
-    void UpdateGravity()
-    {
-        Vector3 gravity = Vector3.zero;
-
-        switch (gravityDirection)
-        {
-            case GravityDirection.PositiveX:
-                gravity = new Vector3(gravityValue, 0, 0);
-                break;
-            case GravityDirection.NegativeX:
-                gravity = new Vector3(-gravityValue, 0, 0);
-                break;
-            case GravityDirection.PositiveY:
-                gravity = new Vector3(0, gravityValue, 0);
-                break;
-            case GravityDirection.NegativeY:
-                gravity = new Vector3(0, -gravityValue, 0);
-                break;
-        }
-
-        Physics.gravity = gravity;
-
-        // Reapply constraints after gravity update
-        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationZ;
+        rotationCoroutine = null;
     }
 }
