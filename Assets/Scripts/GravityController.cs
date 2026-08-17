@@ -41,6 +41,31 @@ public class GravityController : MonoBehaviour
         HandleGravityInput();
     }
 
+    public Vector3 GetGravityDirection()
+    {
+        switch (gravityDirection)
+        {
+            case GravityDirection.PositiveX:
+                return Vector3.right;
+
+            case GravityDirection.NegativeX:
+                return Vector3.left;
+
+            case GravityDirection.PositiveY:
+                return Vector3.up;
+
+            case GravityDirection.NegativeY:
+                return Vector3.down;
+        }
+
+        return Vector3.down;
+    }
+
+    public Vector3 GetUpDirection()
+    {
+        return -GetGravityDirection();
+    }
+
     void HandleGravityInput()
     {
        if (Input.GetKeyDown(KeyCode.UpArrow))

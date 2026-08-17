@@ -1,83 +1,146 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-
 
 public class PlayerControl : MonoBehaviour
 {
+    [Header("Movement")]
+    public float moveSpeed = 5f;
+    public float jumpForce = 8f;
 
-    public float moveSpeed;
-    public float jumpForce;
-    private float moveInput;
-
-    private Rigidbody rb;
-    //private bool canMove = true; <<<<<<<-------- is not being use but maybe it would.
-    //private bool facingRight = true; <<<-----------^
-    private bool isGrounded = true;
-    private bool canJump = true;
-
+    [Header("Ground Check")]
     public Transform groundCheck;
-    public float checkRadius;
+    public float checkRadius = 0.2f;
     public LayerMask whatIsGround;
 
-    public Transform cameraTransform; // Assign the main camera in the inspector
+    [Header("Camera")]
+    public Transform cameraTransform;
+
+    [Header("References")]
+    public GravityController gravityController;
+
+    private Rigidbody rb;
+
+    private float moveInput;
+    private bool isGrounded;
+    private bool canJump = true;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
 
-        // Auto-assign the Main Camera (In other words you don't have to drag and drop the camera in the slot.)
         if (cameraTransform == null)
         {
             cameraTransform = Camera.main.transform;
         }
+
+        if (gravityController == null)
+        {
+            gravityController = GetComponent<GravityController>();
+        }
+
+        if (gravityController == null)
+        {
+            Debug.LogError("PlayerControl could not find a GravityController.");
+        }
     }
 
-    // Update is called once per frame
     void Update()
     {
-       PlayerMovement();
+        HandleInput();
+        CheckGrounded();
     }
 
-    public void PlayerMovement()
+    void FixedUpdate()
     {
-         // Check if player is grounded
-        isGrounded = Physics.OverlapSphere(groundCheck.position, checkRadius, whatIsGround).Length > 0;
-
-        // Left and Right movement based on Camera Direction
-        Vector3 camRight = cameraTransform.right;
-        camRight.y = 0; // Ignore vertical tilt
-        camRight.Normalize();
-
-        moveInput = Input.GetAxis("Horizontal");
-        Debug.Log(moveInput);
-        Vector3 moveDirection = camRight * moveInput * moveSpeed;
-
-        rb.velocity = new Vector3(moveDirection.x, rb.velocity.y, moveDirection.z);
-
-        //Jumping check
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded == true && canJump == true)
-        {
-            rb.velocity = transform.up * jumpForce;
-            Debug.Log(KeyCode.Space);
-            /*canJump = false;*/ // Disable jumping
-        }
-
-        // Increase Fall Velocity
-        if (!isGrounded && rb.velocity.y < 0)
-        {
-            rb.velocity += Vector3.up * Physics.gravity.y * (2f - 1f) * Time.deltaTime;
-        }
-
-        //if (isGrounded == true)
-        //{
-        //    StartCoroutine(JumpCooldown()); <<<<<<<------- The point here was so they can't jump immedietly the moment they land. Maybe there is a code so the charaacter 
-        //}                                                      can finish its animation before enacting the jump.
+        PlayerMovement();
     }
 
-    //IEnumerator JumpCooldown()
-    //{
-    //    yield return new WaitForSeconds(1f); // Wait for 1 second
-    //    canJump = true; // Re-enable jumping
-    //}
+    void HandleInput()
+    {
+        moveInput = Input.GetAxisRaw("Horizontal");
+
+        if (Input.GetKeyDown(KeyCode.Space) && isGrounded && canJump)
+        {
+            Jump();
+        }
+    }
+
+    void CheckGrounded()
+    {
+        isGrounded = Physics.OverlapSphere(
+            groundCheck.position,
+            checkRadius,
+            whatIsGround
+        ).Length > 0;
+    }
+
+    void PlayerMovement()
+    {
+        if (gravityController == null)
+            return;
+
+        // Current direction of gravity.
+        Vector3 gravityDirection =
+            gravityController.GetGravityDirection();
+
+        // Direction opposite gravity.
+        Vector3 upDirection =
+            gravityController.GetUpDirection();
+
+        // Get camera's right direction.
+        Vector3 camRight = cameraTransform.right;
+
+        // Project camera right onto the player's current ground plane.
+        camRight = Vector3.ProjectOnPlane(
+            camRight,
+            upDirection
+        ).normalized;
+
+        // Horizontal movement along the current surface.
+        Vector3 movementVelocity =
+            camRight * moveInput * moveSpeed;
+
+        // Preserve the velocity caused by gravity.
+        Vector3 gravityVelocity =
+            Vector3.Project(rb.velocity, gravityDirection);
+
+        // Combine movement + gravity.
+        rb.velocity = movementVelocity + gravityVelocity;
+
+        // Extra falling acceleration.
+        if (!isGrounded)
+        {
+            float gravitySpeed =
+                Vector3.Dot(rb.velocity, gravityDirection);
+
+            if (gravitySpeed > 0)
+            {
+                rb.AddForce(
+                    gravityDirection * Physics.gravity.magnitude,
+                    ForceMode.Acceleration
+                );
+            }
+        }
+    }
+
+    void Jump()
+    {
+        if (gravityController == null)
+            return;
+
+        Vector3 upDirection =
+            gravityController.GetUpDirection();
+
+        // Remove current velocity along the gravity axis.
+        Vector3 velocityWithoutGravity =
+            Vector3.ProjectOnPlane(
+                rb.velocity,
+                upDirection
+            );
+
+        // Jump opposite the direction of gravity.
+        rb.velocity =
+            velocityWithoutGravity +
+            upDirection * jumpForce;
+    }
 }
+
