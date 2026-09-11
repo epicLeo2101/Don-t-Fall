@@ -180,9 +180,7 @@ public class GravityController : MonoBehaviour
             StopCoroutine(rotationCoroutine);
         }
 
-        rotationCoroutine = StartCoroutine(
-            SmoothRotation(targetRotation)
-        );
+        rotationCoroutine = StartCoroutine(SmoothRotation(targetRotation));
     }
 
     IEnumerator SmoothRotation(Quaternion targetRotation)
@@ -194,11 +192,7 @@ public class GravityController : MonoBehaviour
         {
             elapsedTime += Time.deltaTime * rotationSpeed;
 
-            transform.rotation = Quaternion.Slerp(
-                startRotation,
-                targetRotation,
-                elapsedTime
-            );
+            transform.rotation = Quaternion.Slerp(startRotation, targetRotation, elapsedTime);
 
             yield return null;
         }

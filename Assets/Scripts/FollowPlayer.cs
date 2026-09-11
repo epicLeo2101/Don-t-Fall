@@ -24,11 +24,22 @@ public class FollowPlayer : MonoBehaviour
     {
         if (player == null) return;
 
-        // Smoothly follow the player while maintaining the offset
-        transform.position = Vector3.Lerp(transform.position, player.position + offset, Time.deltaTime * smoothSpeed);
+        // Rotate the offset only around the Z axis
+        Vector3 rotatedOffset = Quaternion.Euler(0f, 0f, player.eulerAngles.z) * offset;
 
-        // Smoothly rotate only on the Z-axis to match the player’s rotation
+        // Calculate the desired camera position
+        Vector3 targetPosition = player.position + rotatedOffset;
+
+        // NEVER change the camera's Z position
+        targetPosition.z = transform.position.z;
+
+        // Smoothly follow the player
+        transform.position = Vector3.Lerp(transform.position, targetPosition, Time.deltaTime * smoothSpeed);
+
+        // Only rotate around Z
         Quaternion targetRotation = Quaternion.Euler(0, 0, player.eulerAngles.z);
+
         transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, Time.deltaTime * smoothSpeed);
+
     }
 }

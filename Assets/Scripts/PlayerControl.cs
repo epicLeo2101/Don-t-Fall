@@ -23,9 +23,9 @@ public class PlayerControl : MonoBehaviour
 
     private Rigidbody rb;
 
-    private float moveInput;
-    private bool isGrounded;
-    private bool canJump = true;
+    public bool isGrounded;
+    public float moveInput;
+    public bool canJump = true;
 
     void Start()
     {
@@ -64,9 +64,7 @@ public class PlayerControl : MonoBehaviour
     {
         moveInput = Input.GetAxisRaw("Horizontal");
 
-        if (Input.GetKeyDown(KeyCode.Space) &&
-            isGrounded &&
-            canJump)
+        if (Input.GetKeyDown(KeyCode.Space) && isGrounded && canJump)
         {
             Jump();
         }
@@ -74,16 +72,17 @@ public class PlayerControl : MonoBehaviour
 
     void CheckGrounded()
     {
-        isGrounded = Physics.OverlapSphere(
-            groundCheck.position,
-            checkRadius,
-            whatIsGround
-        ).Length > 0;
+        isGrounded = Physics.OverlapSphere(groundCheck.position, checkRadius, whatIsGround).Length > 0;
     }
 
     void PlayerMovement()
     {
         if (gravityController == null)
+            return;
+
+        // No air control.
+        // The player's existing momentum is preserved.
+        if (!isGrounded)
             return;
 
         Vector3 upDirection =
@@ -97,10 +96,7 @@ public class PlayerControl : MonoBehaviour
 
         // Project camera-right onto the player's current
         // walking surface.
-        camRight = Vector3.ProjectOnPlane(
-            camRight,
-            upDirection
-        ).normalized;
+        camRight = Vector3.ProjectOnPlane(camRight, upDirection).normalized;
 
         Vector3 targetMovement =
             camRight * moveInput * moveSpeed;
@@ -117,17 +113,10 @@ public class PlayerControl : MonoBehaviour
         // 2. Surface/momentum velocity
         //
         // Anything perpendicular to gravity is preserved.
-        Vector3 gravityVelocity =
-            Vector3.Project(
-                currentVelocity,
-                -upDirection
-            );
 
-        Vector3 surfaceVelocity =
-            Vector3.ProjectOnPlane(
-                currentVelocity,
-                upDirection
-            );
+        Vector3 gravityVelocity = Vector3.Project(currentVelocity, -upDirection);
+
+        Vector3 surfaceVelocity = Vector3.ProjectOnPlane(currentVelocity, upDirection);
 
         // -------------------------------------------------
         // MOVEMENT + MOMENTUM
@@ -144,19 +133,13 @@ public class PlayerControl : MonoBehaviour
             accelerationRate = deceleration;
         }
 
-        surfaceVelocity = Vector3.MoveTowards(
-            surfaceVelocity,
-            targetMovement,
-            accelerationRate * Time.fixedDeltaTime
-        );
+        surfaceVelocity = Vector3.MoveTowards(surfaceVelocity, targetMovement, accelerationRate * Time.fixedDeltaTime);
 
         // -------------------------------------------------
         // COMBINE VELOCITIES
         // -------------------------------------------------
 
-        rb.velocity =
-            gravityVelocity +
-            surfaceVelocity;
+        rb.velocity = gravityVelocity + surfaceVelocity;
     }
 
     void Jump()
@@ -164,20 +147,29 @@ public class PlayerControl : MonoBehaviour
         if (gravityController == null)
             return;
 
+        isGrounded = false;
+
         Vector3 upDirection =
             gravityController.GetUpDirection();
 
         // Preserve momentum that is parallel to the ground.
         Vector3 surfaceVelocity =
-            Vector3.ProjectOnPlane(
-                rb.velocity,
-                upDirection
-            );
+            Vector3.ProjectOnPlane(rb.velocity, upDirection);
 
         // Jump opposite the direction of gravity.
-        rb.velocity =
-            surfaceVelocity +
-            upDirection * jumpForce;
+        rb.velocity = surfaceVelocity + upDirection * jumpForce;
+    }
+
+
+    // Methods being called from other scripts.
+    public bool IsGrounded()
+    {
+        return isGrounded;
+    }
+
+    public float GetMoveInput()
+    {
+        return moveInput;
     }
 }
 
