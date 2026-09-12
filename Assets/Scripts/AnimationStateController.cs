@@ -2,67 +2,95 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class AnimationStateController : MonoBehaviour // DELETE LATER: When I'm moving to the left or right, the model moves as normal, but when I switch direction, the model slows, stops, then moves in the direction I want. It is quite fast, but can I use those moments to change and set an animation so it looks like it was doing a 180-degree turn, and the moment the player starts moving in the opposite direction, the model switches the direction it is facing and goes back to the isrunning phase?
+public class AnimationStateController : MonoBehaviour 
 {
     Animator animator;
     PlayerControl playerControl;
+    GravityController gravityController;
 
     int isRunningHash;
+    int isTurningHash;
 
-    bool wasGrounded;
+    float previousInput;
 
     // Start is called before the first frame update
     void Start()
     {
         animator = GetComponent<Animator>();
+
         isRunningHash = Animator.StringToHash("isRunning");
-        playerControl = GetComponentInParent<PlayerControl>(); // Reminder because the script is in the lower hierarchy.
-        wasGrounded = playerControl.IsGrounded();
+        isTurningHash = Animator.StringToHash("isTurning");
+
+        playerControl = GetComponentInParent<PlayerControl>();
+        gravityController = GetComponentInParent<GravityController>();
+
+        previousInput = 0f;
     }
 
     // Update is called once per frame
     void Update()
     {
         float moveInput = playerControl.GetMoveInput();
-        bool isGrounded = playerControl.IsGrounded();
 
-        // Player is airborne.
-        if (!isGrounded)               // It midigates the problem but the "isRunning" is set on briefly while changing. 
+        // Player is NOT on the ground.
+        if (!playerControl.IsGrounded())
         {
             animator.SetBool(isRunningHash, false);
+            animator.SetBool(isTurningHash, false);
 
-            wasGrounded = false;
+            previousInput = moveInput;
 
             // Later:
-            // Jumping / Falling animation goes here.
+            // Activate jumping/falling animation here.
 
             return;
         }
 
-        // Player has just landed.
-        if (!wasGrounded && isGrounded)
+        // No input.
+        if (moveInput == 0)
         {
             animator.SetBool(isRunningHash, false);
+            animator.SetBool(isTurningHash, false);
 
-            wasGrounded = true;
-
-            // Later:
-            // Landing animation goes here.
+            previousInput = 0f;
 
             return;
         }
 
-        // Player is on the ground and moving left or right
-        if (moveInput != 0)
+        // Player has changed direction.
+        if (previousInput != 0 && moveInput != previousInput)
         {
+            animator.SetBool(isRunningHash, false);
+            animator.SetBool(isTurningHash, true);
+        }
+
+        // Get the player's actual velocity.
+        Vector3 velocity = playerControl.GetVelocity();
+
+        // Get the player's current up direction.
+        Vector3 upDirection = gravityController.GetUpDirection();
+
+        // Remove the gravity portion of the velocity.
+        Vector3 surfaceVelocity = Vector3.ProjectOnPlane(velocity, upDirection);
+
+        // Get the direction the player is trying to move.
+        Vector3 inputDirection = Camera.main.transform.right * moveInput;
+
+        // Remove any gravity component.
+        inputDirection =Vector3.ProjectOnPlane(inputDirection, upDirection).normalized;
+
+        // Check whether the player has actually started
+        // moving in the direction of the new input.
+        float movementDirection = Vector3.Dot(surfaceVelocity.normalized, inputDirection);
+
+        // The player is actually moving in the new direction.
+        if (surfaceVelocity.magnitude > 0.05f && movementDirection > 0.1f)
+        {
+            animator.SetBool(isTurningHash, false);
             animator.SetBool(isRunningHash, true);
         }
-        else
-        {
-            animator.SetBool(isRunningHash, false);
-        }
 
-        wasGrounded = isGrounded;
+        previousInput = moveInput;
 
     }
 }

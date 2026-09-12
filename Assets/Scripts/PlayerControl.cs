@@ -171,5 +171,10 @@ public class PlayerControl : MonoBehaviour
     {
         return moveInput;
     }
+
+    public Vector3 GetVelocity()
+    {
+        return rb.velocity;
+    }
 }
 
